@@ -28,6 +28,8 @@ Written by: Marten Svanfeldt
 #include "GLDebugDrawer.h"
 #include "RagdollDemo.h"
 
+#include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
+
 
 // Enrico: Shouldn't these three variables be real constants and not defines?
 
@@ -382,16 +384,31 @@ void RagdollDemo::initPhysics()
 	//startOffset.setValue(-1,0.5,0);
 	//spawnRagdoll(startOffset);
 
-	CreateBox(0, 0., 1.7, 0., 1., 1., 0.2); // Create the box 
-	CreateCylinder(1, 0., 1.7, 1.7 , 0.2, .7, 0., 3.14/2.0, 0.);
-	CreateCylinder(2, 0., 1.7, -1.7 , 0.2, .7, 0., 3.14/2.0, 0.);
-	CreateCylinder(3, 1.7, 1.7, 0. , 0.2, .7, 0., 3.14/2.0, 3.14/2.0);
-	CreateCylinder(4, -1.7, 1.7, 0. , 0.2, .7, 0., 3.14/2.0, 3.14/2.0);
+	CreateBox(0, 0., 2.2, 0., .9, .9, 0.2); // Create the box 
+
+	CreateCylinder(1, 0., 2.2, 2. , 0.2, 1., 0., M_PI_2, 0.);
+	CreateCylinder(2, 0., 2.2, -2. , 0.2, 1., 0., M_PI_2, 0.);
+	CreateCylinder(3, 2., 2.2, 0. , 0.2, 1., 0., 0., M_PI_2);
+	CreateCylinder(4, -2., 2.2, 0. , 0.2, 1., 0., 0., M_PI_2);
 	
-	CreateCylinder(1, 0., .75, 2.5 , 0.2, 1, 0., 0., 0.);
-	CreateCylinder(2, 0., .75, -2.5 , 0.2, 1, 0., 0., 0.);
-	CreateCylinder(3, 2.5, .75, 0. , 0.2, 1, 0.0, 0., 0.);
-	CreateCylinder(4, -2.5, .75, 0. , 0.2, 1, 0., 0., 0.);
+	CreateCylinder(5, 0., 1., 3.2 , 0.2, 1, 0., 0., 0.);
+	CreateCylinder(6, 0., 1., -3.2 , 0.2, 1, 0., 0., 0.);
+	CreateCylinder(7, 3.2, 1., 0. , 0.2, 1, 0.0, 0., 0.);
+	CreateCylinder(8, -3.2, 1., 0. , 0.2, 1, 0., 0., 0.);
+
+	CreateHinge(0,    4, 8,    -3.2, 2.2, 0.0,    0, 0, -1);
+	CreateHinge(1,    3, 7,    3.2, 2.2, 0.0,    0, 0, 1);
+	CreateHinge(2,    2, 6,    0., 2.2, -3.2,    -1, 0, 0);
+	CreateHinge(3,    1, 5,    0., 2.2, 3.2,    1, 0, 0);
+
+	CreateHinge(4,    1, 0,    0., 2.2, 1.,    1, 0, 0);
+	CreateHinge(5,    2, 0,    0., 2.2, -1.,    -1, 0, 0);
+	CreateHinge(6,    3, 0,    1., 2.2, 0.0,    0, 0, 1);
+	CreateHinge(7,    4, 0,    -1., 2.2, 0.0,    0, 0, -1);
+
+
+
+
 
 	clientResetScene();		
 }
@@ -417,6 +434,11 @@ void RagdollDemo::clientMoveAndDisplay()
 	{
 		if (!pause) { 
 		    m_dynamicsWorld->stepSimulation(ms / 1000000.f);
+		}
+		if(pause && oneStep)
+		{
+			m_dynamicsWorld->stepSimulation(ms / 1000000.f);
+			oneStep = false;
 		}
 		
 		//optional but useful: debug drawing
@@ -460,6 +482,13 @@ void RagdollDemo::keyboardCallback(unsigned char key, int x, int y)
 		{
 			pause = !pause;
 		}
+	case 'i':
+		{
+			if(pause)
+			{
+				oneStep = true;
+			}
+		}
 	default:
 		DemoApplication::keyboardCallback(key, x, y);
 	}
@@ -475,7 +504,7 @@ void	RagdollDemo::exitPhysics()
 	{
 		DeleteObject(i);
 	}
-	
+	DestroyHinge(0);
 }
 
 
@@ -510,7 +539,7 @@ void RagdollDemo::CreateCylinder( int index,
 	transform.setOrigin(btVector3(btScalar(x), btScalar(y), btScalar(z)));
 	transform.setRotation(btQuaternion(btScalar(yaw),btScalar(pitch),btScalar(roll)));
 
-	geom[index] = new btCylinderShape(btVector3(btScalar(radius),btScalar(length),btScalar(length)));
+	geom[index] = new btCylinderShape(btVector3(btScalar(radius),btScalar(length),btScalar(radius)));
 
 
 	body[index] = localCreateRigidBody(1, transform, geom[index]);
@@ -527,5 +556,68 @@ void RagdollDemo::CreateCylinder( int index,
  } 
 
 
+void RagdollDemo::CreateHinge(int index, int body1, int body2, double x, double y, double z, double ax, double ay, double az)
+{
+	btVector3 p(x, y, z);
+  	btVector3 a(ax, ay, az);
+
+  	//p = flipZY(p);
+  	//a = flipZY(a);
+
+  	btVector3 p1 = PointWorldToLocal(body1, p);
+  	btVector3 p2 = PointWorldToLocal(body2, p);
+
+  	btVector3 a1 = AxisWorldToLocal(body1, a);
+  	btVector3 a2 = AxisWorldToLocal(body2, a);
+
+  	joints[index] = new btHingeConstraint(*body[body1], *body[body2],
+                                                   p1, p2,
+                                                   a1, a2, false);    
+
+  	if ( index==4 )
+      joints[index]->setLimit( (-45. + 90.)*3.14159/180., (45. + 90.)*3.14159/180.); 
+	else if ( index==5 )
+	      joints[index]->setLimit( (-45. - 90.)*3.14159/180., (45. - 90.)*3.14159/180.); 
+	else if ( index==6 )
+	      joints[index]->setLimit( (-45. + 90.)*3.14159/180., (45. + 90.)*3.14159/180.); 
+	else if ( index==7 )
+	      joints[index]->setLimit( (-45. - 90.)*3.14159/180., (45. - 90.)*3.14159/180.);
+	else if ( index==0 )
+	      joints[index]->setLimit( (-45. - 90.)*3.14159/180., (45. - 90.)*3.14159/180.); 
+	else if ( index==1 )
+	      joints[index]->setLimit( (-45. + 90.)*3.14159/180., (45. + 90.)*3.14159/180.); 
+	else if ( index==2 )
+	      joints[index]->setLimit( (-45. - 90.)*3.14159/180., (45. - 90.)*3.14159/180.); 
+	else if ( index==3 )
+	      joints[index]->setLimit( (-45. + 90.)*3.14159/180., (45. + 90.)*3.14159/180.); 
+
+	
+
+  	m_dynamicsWorld->addConstraint( joints[index] , true );
+}
+
+void RagdollDemo::DestroyHinge(int index) {
+	m_dynamicsWorld->removeConstraint( joints[index] );
+	delete joints[index];
+}
 
 
+btVector3 RagdollDemo::PointWorldToLocal(int index, btVector3 &p) {
+  btTransform local1 = body[index]->getCenterOfMassTransform().inverse();
+  return local1 * p;
+}
+
+btVector3 RagdollDemo::AxisWorldToLocal(int index, btVector3 &a) {
+  btTransform local1 = body[index]->getCenterOfMassTransform().inverse();
+  btVector3 zero(0,0,0);
+  local1.setOrigin(zero);
+  return local1 * a;
+}
+
+btVector3 RagdollDemo::flipZY(btVector3 input) {
+  btScalar temp;
+  temp = input[1];
+  input[1] = input[2];
+  input[2] = temp;
+  return input;
+}
