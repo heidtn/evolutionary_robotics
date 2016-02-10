@@ -419,6 +419,8 @@ void RagdollDemo::spawnRagdoll(const btVector3& startOffset)
 	m_ragdolls.push_back(ragDoll);
 }	
 
+
+int numcalls = 0;
 void RagdollDemo::clientMoveAndDisplay()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
@@ -432,13 +434,23 @@ void RagdollDemo::clientMoveAndDisplay()
 
 	if (m_dynamicsWorld)
 	{
-		if (!pause) { 
+		if (!pause || (pause && oneStep)) { 
+			numcalls ++;
+
+			if(numcalls % 20 == 0)
+			{
+				ActuateJoint(0, (rand()/double(RAND_MAX))*90.-45., -90., ms / 1000000.f); 
+				ActuateJoint(1, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
+				ActuateJoint(2, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
+				ActuateJoint(3, (rand()/double(RAND_MAX))*90.-45, -90., ms / 1000000.f);
+
+				ActuateJoint(4, (rand()/double(RAND_MAX))*90.-45, -90., ms / 1000000.f); 
+				ActuateJoint(5, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
+				ActuateJoint(6, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
+				ActuateJoint(7, (rand()/double(RAND_MAX))*90.-45, -90., ms / 1000000.f); 
+			}
 		    m_dynamicsWorld->stepSimulation(ms / 1000000.f);
-		}
-		if(pause && oneStep)
-		{
-			m_dynamicsWorld->stepSimulation(ms / 1000000.f);
-			oneStep = false;
+		    oneStep = false;
 		}
 		
 		//optional but useful: debug drawing
@@ -572,10 +584,13 @@ void RagdollDemo::CreateHinge(int index, int body1, int body2, double x, double 
 
   	joints[index] = new btHingeConstraint(*body[body1], *body[body2],
                                                    p1, p2,
-                                                   a1, a2, false);    
+                                                   a1, a2, false); 
+
+  	
+
 
   	if ( index==4 )
-      joints[index]->setLimit( (-45. + 90.)*3.14159/180., (45. + 90.)*3.14159/180.); 
+      	  joints[index]->setLimit( (-45. + 90.)*3.14159/180., (45. + 90.)*3.14159/180.); 
 	else if ( index==5 )
 	      joints[index]->setLimit( (-45. - 90.)*3.14159/180., (45. - 90.)*3.14159/180.); 
 	else if ( index==6 )
@@ -620,4 +635,28 @@ btVector3 RagdollDemo::flipZY(btVector3 input) {
   input[1] = input[2];
   input[2] = temp;
   return input;
+}
+
+void RagdollDemo::ActuateJoint(int jointIndex, double desiredAngle, 
+                  double jointOffset, double timeStep) {
+
+	joints[jointIndex]->enableMotor(true);
+  	joints[jointIndex]->setMaxMotorImpulse(btScalar(1.));
+
+	btScalar angle((desiredAngle + jointOffset)*3.14159/180.);
+	btScalar dt(timeStep);
+	joints[jointIndex]->setMotorTarget(angle, dt); 
+    
+}
+
+void RagdollDemo::ActuateJoint2(int jointIndex, double desiredAngle, 
+                  double jointOffset, double timeStep) {
+
+	btScalar curAngle = joints[jointIndex]->getHingeAngle();
+	btScalar angDif = desiredAngle - curAngle;
+	joints[jointIndex]->enableAngularMotor(true, angDif, 10.0);
+
+
+	//joints[index]->setMotorTarget(btScalar((desiredAngle + jointOffset)*3.14159/180.), btScalar(timeStep)); 
+    
 }

@@ -98,6 +98,12 @@ public:
 	void DestroyHinge(int index);
 
 	btVector3 flipZY(btVector3 input);
+
+	void ActuateJoint(int jointIndex, double desiredAngle, 
+                  double jointOffset, double timeStep);
+
+	void ActuateJoint2(int jointIndex, double desiredAngle, 
+                  double jointOffset, double timeStep);
 };
 
 
