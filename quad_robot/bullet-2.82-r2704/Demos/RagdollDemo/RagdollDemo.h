@@ -23,6 +23,9 @@ Written by: Marten Svanfeldt
 #include "LinearMath/btAlignedObjectArray.h"
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 
+#include "GLDebugDrawer.h" 
+
+
 class btBroadphaseInterface;
 class btCollisionShape;
 class btOverlappingPairCache;
@@ -30,6 +33,7 @@ class btCollisionDispatcher;
 class btConstraintSolver;
 struct btCollisionAlgorithmCreateFunc;
 class btDefaultCollisionConfiguration;
+
 
 class RagdollDemo : public GlutDemoApplication
 {
@@ -54,7 +58,37 @@ class RagdollDemo : public GlutDemoApplication
 	btHingeConstraint* joints[8]; 
  	bool oneStep;
 
+ 	int IDs[10];
+
+ 	virtual void renderme() { 
+      extern GLDebugDrawer gDebugDrawer; 
+      // Call the parent method.
+           GlutDemoApplication::renderme(); 
+      // Make a circle with a 0.9 radius at (0,0,0) 
+      // with RGB color (1,0,0).
+
+        for(int i = 0; i < 9; i++)
+        {
+        	if(touches[i] == 1)
+        	{
+        		gDebugDrawer.drawSphere(touchPoints[i], .4, btVector3(1., 0., 0.));
+        	}
+        	
+        }
+        
+ 	}
+
+
+
+
+
 public:
+
+	int touches[10]; 
+	btVector3 touchPoints[10];
+
+
+
 	void initPhysics();
 
 	void exitPhysics();
@@ -104,6 +138,7 @@ public:
 
 	void ActuateJoint2(int jointIndex, double desiredAngle, 
                   double jointOffset, double timeStep);
+
 };
 
 

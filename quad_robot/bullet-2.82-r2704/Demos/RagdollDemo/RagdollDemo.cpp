@@ -30,6 +30,8 @@ Written by: Marten Svanfeldt
 
 #include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
 
+#include "GLDebugDrawer.h" 
+
 
 // Enrico: Shouldn't these three variables be real constants and not defines?
 
@@ -44,6 +46,8 @@ Written by: Marten Svanfeldt
 #ifndef M_PI_4
 #define M_PI_4     0.785398163397448309616
 #endif
+
+
 
 class RagDoll
 {
@@ -329,13 +333,35 @@ public:
 	}
 };
 
+static RagdollDemo* ragdollDemo; 
 
+bool myContactProcessedCallback(btManifoldPoint& cp, 
+                                void* body0, void* body1)
+{
+    int *ID1, *ID2; 
+    btCollisionObject* o1 = static_cast<btCollisionObject*>(body0); 
+    btCollisionObject* o2 = static_cast<btCollisionObject*>(body1);
+    int groundID = 9;
+
+    ID1 = static_cast<int*>(o1->getUserPointer()); 
+    ID2 = static_cast<int*>(o2->getUserPointer());
+    ragdollDemo->touches[*ID1] = 1;
+    ragdollDemo->touches[*ID2] = 1;
+    ragdollDemo->touchPoints[*ID1] = cp.m_positionWorldOnB; 
+ 	ragdollDemo->touchPoints[*ID2] = cp.m_positionWorldOnB;
+    //printf("ID1 = %d, ID2 = %d\n", *ID1, *ID2);
+
+    return false;
+}
 
 
 void RagdollDemo::initPhysics()
 {
 	// Setup the basic world
 	pause = false;
+	ragdollDemo = this;
+	gContactProcessedCallback = myContactProcessedCallback;
+
 
 	setTexturing(true);
 	setShadows(true);
@@ -371,6 +397,9 @@ void RagdollDemo::initPhysics()
 		btCollisionObject* fixedGround = new btCollisionObject();
 		fixedGround->setCollisionShape(groundShape);
 		fixedGround->setWorldTransform(groundTransform);
+
+		(fixedGround)->setUserPointer( &(IDs[9]) );
+
 		m_dynamicsWorld->addCollisionObject(fixedGround);
 #else
 		localCreateRigidBody(btScalar(0.),groundTransform,groundShape);
@@ -383,6 +412,11 @@ void RagdollDemo::initPhysics()
 	//spawnRagdoll(startOffset);
 	//startOffset.setValue(-1,0.5,0);
 	//spawnRagdoll(startOffset);
+
+	for(int i = 0; i < 10; i ++)
+	{
+		IDs[i] = i;
+	}
 
 	CreateBox(0, 0., 2.2, 0., .9, .9, 0.2); // Create the box 
 
@@ -449,7 +483,17 @@ void RagdollDemo::clientMoveAndDisplay()
 				ActuateJoint(6, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
 				ActuateJoint(7, (rand()/double(RAND_MAX))*90.-45, -90., ms / 1000000.f); 
 			}
+			for(int i = 0; i < 10; i ++)
+			{
+				touches[i] = 0;
+			}
 		    m_dynamicsWorld->stepSimulation(ms / 1000000.f);
+
+		    for(int i = 0; i < 10; i++)
+		    {
+		    	printf("%d", touches[i]);
+		    }
+		    printf("\n");
 		    oneStep = false;
 		}
 		
@@ -536,6 +580,7 @@ void RagdollDemo::CreateBox( int index,
 
 
 	body[index] = localCreateRigidBody(1, transform, geom[index]);
+	(body[index])->setUserPointer( &(IDs[index]) );
 
 	m_dynamicsWorld->addRigidBody(body[index]);	
 }
@@ -555,6 +600,7 @@ void RagdollDemo::CreateCylinder( int index,
 
 
 	body[index] = localCreateRigidBody(1, transform, geom[index]);
+	(body[index])->setUserPointer( &(IDs[index]) );
 
 	m_dynamicsWorld->addRigidBody(body[index]);	
  }
