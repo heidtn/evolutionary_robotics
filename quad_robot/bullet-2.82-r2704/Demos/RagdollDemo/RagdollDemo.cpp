@@ -361,6 +361,13 @@ void RagdollDemo::initPhysics()
 	pause = false;
 	ragdollDemo = this;
 	gContactProcessedCallback = myContactProcessedCallback;
+	for(int i = 0; i < 4; i ++)
+	{
+		for(int j = 0; j < 8; j++)
+		{
+			weights[i][j] = rand()/double(RAND_MAX)*2. - 1.;
+		}
+	}
 
 
 	setTexturing(true);
@@ -471,23 +478,38 @@ void RagdollDemo::clientMoveAndDisplay()
 		if (!pause || (pause && oneStep)) { 
 			numcalls ++;
 
-			if(numcalls % 20 == 0)
-			{
-				ActuateJoint(0, (rand()/double(RAND_MAX))*90.-45., -90., ms / 1000000.f); 
-				ActuateJoint(1, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
-				ActuateJoint(2, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
-				ActuateJoint(3, (rand()/double(RAND_MAX))*90.-45, -90., ms / 1000000.f);
-
-				ActuateJoint(4, (rand()/double(RAND_MAX))*90.-45, -90., ms / 1000000.f); 
-				ActuateJoint(5, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
-				ActuateJoint(6, (rand()/double(RAND_MAX))*90.-45, 90., ms / 1000000.f); 
-				ActuateJoint(7, (rand()/double(RAND_MAX))*90.-45, -90., ms / 1000000.f); 
-			}
 			for(int i = 0; i < 10; i ++)
 			{
 				touches[i] = 0;
 			}
+
 		    m_dynamicsWorld->stepSimulation(ms / 1000000.f);
+
+		    if(numcalls % 20 == 0)
+		    {
+			    for (int i=0; i<8; i++) { 
+
+				      double motorCommand = 0.0; 
+
+				      for (int j=0; j<4; j++) {
+
+				           motorCommand = motorCommand + weights[j][i];
+				      }
+
+				      motorCommand = tanh(motorCommand); 
+				      motorCommand = motorCommand*45;
+
+				      printf("motor command: %f\n", motorCommand);
+				      if(i == 0 || i == 3 || i == 4 || i == 7)
+				      {
+				      	ActuateJoint(i,motorCommand, -90., ms / 1000000.f); 
+				      }
+				      else
+				      {
+				      	ActuateJoint(i,motorCommand, 90., ms / 1000000.f); 
+				      }
+				}
+			}
 
 		    for(int i = 0; i < 10; i++)
 		    {

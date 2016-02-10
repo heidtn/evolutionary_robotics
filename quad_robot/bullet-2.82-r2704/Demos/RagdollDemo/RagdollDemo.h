@@ -86,6 +86,7 @@ public:
 
 	int touches[10]; 
 	btVector3 touchPoints[10];
+	double weights[4][8];
 
 
 
