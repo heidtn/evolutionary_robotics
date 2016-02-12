@@ -354,20 +354,38 @@ bool myContactProcessedCallback(btManifoldPoint& cp,
     return false;
 }
 
+int time_steps;
+FILE *fp;
 
 void RagdollDemo::initPhysics()
 {
 	// Setup the basic world
+	time_steps = 0;
 	pause = false;
 	ragdollDemo = this;
 	gContactProcessedCallback = myContactProcessedCallback;
-	for(int i = 0; i < 4; i ++)
+
+	fp = fopen("weights.dat", "r");
+	if (fp == NULL) {
+	  fprintf(stderr, "Can't open input file in.list!\n");
+	  exit(1);
+	}
+
+	double line[4][8];
+	for (int i = 0; i < 4; ++i) {
+	  for (int j = 0; j < 8; ++j) {
+	    fscanf(fp, "%lf", &weights[i][j]);
+	  }
+	}
+
+	/*for(int i = 0; i < 4; i ++)
 	{
 		for(int j = 0; j < 8; j++)
 		{
-			weights[i][j] = rand()/double(RAND_MAX)*2. - 1.;
+			printf("%f,", weights[i][j]);
 		}
-	}
+		printf("\n");
+	}*/
 
 
 	setTexturing(true);
@@ -460,6 +478,14 @@ void RagdollDemo::spawnRagdoll(const btVector3& startOffset)
 	m_ragdolls.push_back(ragDoll);
 }	
 
+void Save_Position(btRigidBody* body)
+{
+	//printf("Final z: %f\n", body->getCenterOfMassPosition().getZ());
+	FILE *fp;
+	fp = fopen("fits.dat", "w");
+	fprintf(fp, "%f", body->getCenterOfMassPosition().getZ());
+
+}
 
 int numcalls = 0;
 void RagdollDemo::clientMoveAndDisplay()
@@ -475,6 +501,9 @@ void RagdollDemo::clientMoveAndDisplay()
 
 	if (m_dynamicsWorld)
 	{
+
+		time_steps ++;
+
 		if (!pause || (pause && oneStep)) { 
 			numcalls ++;
 
@@ -483,7 +512,9 @@ void RagdollDemo::clientMoveAndDisplay()
 				touches[i] = 0;
 			}
 
+
 		    m_dynamicsWorld->stepSimulation(ms / 1000000.f);
+			
 
 		    if(numcalls % 20 == 0)
 		    {
@@ -493,13 +524,12 @@ void RagdollDemo::clientMoveAndDisplay()
 
 				      for (int j=0; j<4; j++) {
 
-				           motorCommand = motorCommand + weights[j][i];
+				           motorCommand = motorCommand + weights[j][i]*touches[j + 4];
 				      }
 
 				      motorCommand = tanh(motorCommand); 
 				      motorCommand = motorCommand*45;
 
-				      printf("motor command: %f\n", motorCommand);
 				      if(i == 0 || i == 3 || i == 4 || i == 7)
 				      {
 				      	ActuateJoint(i,motorCommand, -90., ms / 1000000.f); 
@@ -510,13 +540,6 @@ void RagdollDemo::clientMoveAndDisplay()
 				      }
 				}
 			}
-
-		    for(int i = 0; i < 10; i++)
-		    {
-		    	printf("%d", touches[i]);
-		    }
-		    printf("\n");
-		    oneStep = false;
 		}
 		
 		//optional but useful: debug drawing
@@ -524,6 +547,12 @@ void RagdollDemo::clientMoveAndDisplay()
 
 
 	}
+
+	if ( time_steps==1000 )
+	{
+		Save_Position(body[0]);
+        exit(0);
+    }
 
 	renderme(); 
 
@@ -720,9 +749,10 @@ void RagdollDemo::ActuateJoint(int jointIndex, double desiredAngle,
 void RagdollDemo::ActuateJoint2(int jointIndex, double desiredAngle, 
                   double jointOffset, double timeStep) {
 
+	desiredAngle = ((desiredAngle + jointOffset)*3.14159/180.);
 	btScalar curAngle = joints[jointIndex]->getHingeAngle();
 	btScalar angDif = desiredAngle - curAngle;
-	joints[jointIndex]->enableAngularMotor(true, angDif, 10.0);
+	joints[jointIndex]->enableAngularMotor(true, angDif*5., 10.0);
 
 
 	//joints[index]->setMotorTarget(btScalar((desiredAngle + jointOffset)*3.14159/180.), btScalar(timeStep)); 
